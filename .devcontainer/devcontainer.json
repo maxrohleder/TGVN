@@ -5,8 +5,13 @@
         "context": ".."
     },
     "runArgs": [
-        "--gpus=all"
+        "--gpus=all",
+        "--shm-size=128g"
     ],
+    //"mounts": [
+    //    "source=/path/to/fastmri_knee,target=/data/knee,type=bind",
+    //    "source=/path/to/m4raw,target=/data/brain,type=bind"
+    //],
     "containerEnv": {
         "PYTHONPATH": "/workspaces/TGVN/src"
     },
