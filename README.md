@@ -24,7 +24,7 @@ The repo follows the standard layout, and the devcontainer installs the TGVN pac
 
 The dataset splits are provided as CSV files under `data_splits`.
 - **`data_splits/fastmri`**: Contains the training, validation and test splits for the fastMRI knee dataset. Note that the fastMRI training and validation sets were combined and the training/validation/test splits for our experiments were created on a per-patient basis. The CSV files contain filenames, so the user should modify them depending on the dataset location.
-- **`data_splits/m4raw`**: Contains the training, validation and test splits for the M4Raw dataset. Note that the CSV files contain split and filenames, so the user should modify them depending on the dataset location.
+- **`data_splits/m4raw`**: Contains the training, validation and test splits for the M4Raw dataset. [Notes on M4Raw pre-processing](#m4raw_preprocessing) explains the required pre-processing. Note that the CSV files contain split and filenames, so the user should modify them depending on the dataset location.
 
 ### SLURM Batch Scripts
 For convenience, we provided the SLURM scripts for each experiment. If you prefer not to use SLURM, you can directly use torchrun from the slurm_files folder, e.g., for B1, `torchrun --nproc_per_node=4 --nnodes=1 ../scripts/main_m4.py --acc 32 --center-freq 0.02 --num-casc 10 --num-chans 21 --type tgvn`. The arguments specified in the sbatch files are exactly those used in the experiments.
@@ -53,7 +53,8 @@ For convenience, we provided the SLURM scripts for each experiment. If you prefe
    sbatch B2.sbatch
    ```
 
-## Notes on M4Raw pre-processing
+## Notes on M4Raw pre-processing <a name="m4raw_preprocessing"> </a>
+
 The M4Raw dataset contains multiple repetitions, and repetition reduction provides another avenue for practical acceleration. We used the undersampled first repetition as input and the averaged RSS images (averaged over the repetition dimension) as the ground truth, which required only minimal HDF5 file manipulation.
 For example, if `file_T101.h5`, `file_T102.h5`, `file_T103.h5` contain data from three repetitions for a given patient, we retained the k-space from `file_T101.h5` and computed the ground truth by averaging the RSS images. The resulting file was saved as `file_T1.h5`.
 
