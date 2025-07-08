@@ -12,7 +12,9 @@
 
 This repository contains code and scripts for training and validating **T**rust **G**uided **V**ariational **N**etworks (**TGVN**) to replicate https://arxiv.org/abs/2501.03021. Below is an overview of the files and their purposes. The repo was built on the fastMRI repo, which is accessible at https://github.com/facebookresearch/fastMRI. While this codebase utilizes only PyTorch, any wrapper can be integrated easily.
 
-For convenience, a devcontainer that supports CUDA acceleration (CUDA 12.8) was added. For other CUDA versions or ROCm, the Dockerfile can be modified. The repo follows the standard layout, and the devcontainer installs the TGVN package automatically with `pip install -e .`. If you prefer to install the requirements with pip or conda instead of using a Docker container, install the packages listed in lines 24–38 of the `Dockerfile` and then run `pip install -e .` from the repo root.  
+For convenience, a devcontainer that supports CUDA acceleration (CUDA 12.8) was added. For other CUDA versions or ROCm, the Dockerfile can be modified. Before building the container, you might want to update the `devcontainer.json` to access the data inside the container. You can do so by uncommenting the `mounts` key and adding the data paths.
+
+The repo follows the standard layout, and the devcontainer installs the TGVN package automatically with `pip install -e .`. If you prefer to install the requirements with pip or conda instead of using a Docker container, install the packages listed in lines 24–38 of the `Dockerfile` and then run `pip install -e .` from the repo root.  
 
 ## File Descriptions
 
@@ -25,7 +27,7 @@ The dataset splits are provided as CSV files under `data_splits`.
 - **`data_splits/m4raw`**: Contains the training, validation and test splits for the M4Raw dataset. Note that the CSV files contain split and filenames, so the user should modify them depending on the dataset location.
 
 ### SLURM Batch Scripts
-For convenience, we provided the SLURM scripts for each experiment. If you prefer not to use SLURM, you can directly use torchrun from the repo root, e.g., for B1, `torchrun --nproc_per_node=4 --nnodes=1 scripts/main_m4.py --acc 32 --center-freq 0.02 --num-casc 10 --num-chans 21 --type tgvn`. The arguments specified in the sbatch files are exactly those used in the experiments.
+For convenience, we provided the SLURM scripts for each experiment. If you prefer not to use SLURM, you can directly use torchrun from the slurm_files folder, e.g., for B1, `torchrun --nproc_per_node=4 --nnodes=1 ../scripts/main_m4.py --acc 32 --center-freq 0.02 --num-casc 10 --num-chans 21 --type tgvn`. The arguments specified in the sbatch files are exactly those used in the experiments.
 - **`K1.sbatch`**: SLURM script for running the experiment K1 using TGVN.
 - **`K2.sbatch`**: SLURM script for running the experiment K2 using TGVN.
 - **`K3.sbatch`**: SLURM script for running the experiment K3 using TGVN.
