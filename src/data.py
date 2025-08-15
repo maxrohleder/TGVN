@@ -486,7 +486,9 @@ class VarNetDataTransformJoint:
     def __init__(
         self,
         pd_mask_func: Optional[MaskFunc] = None,
+        pd_mask_offset: int = None,
         pdfs_mask_func: Optional[MaskFunc] = None,
+        pdfs_mask_offset: int = None,
         use_seed: bool = True
     ):
         """
@@ -498,7 +500,9 @@ class VarNetDataTransformJoint:
                 mask is used for all the slices of a given volume every time.
         """
         self.pd_mask_func = pd_mask_func
+        self.pd_mask_offset = pd_mask_offset
         self.pdfs_mask_func = pdfs_mask_func
+        self.pdfs_mask_offset = pdfs_mask_offset
         self.use_seed = use_seed
 
     def __call__(
@@ -550,6 +554,7 @@ class VarNetDataTransformJoint:
         ) = apply_mask(
             pd_kspace_torch,
             self.pd_mask_func,
+            offset=self.pd_mask_offset,
             seed=seed,
             padding=(pd_acq_start, pd_acq_end),
         )
@@ -561,6 +566,7 @@ class VarNetDataTransformJoint:
         ) = apply_mask(
             pdfs_kspace_torch,
             self.pdfs_mask_func,
+            offset=self.pdfs_mask_offset,
             seed=seed,
             padding=(pdfs_acq_start, pdfs_acq_end),
         )
