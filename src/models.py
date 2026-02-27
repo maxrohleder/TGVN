@@ -2,15 +2,21 @@
 Copyright (c) 2025, New York University
 """
 
+from datetime import datetime
 import math
+from pathlib import Path
+import time
 from typing import List, Optional, Tuple
 
+from tifffile import imwrite
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
 from fastmri import complex_abs, complex_conj, ifft2c, fft2c, rss_complex
 from fastmri.models.unet import Unet
+
+slice_counter = 0  # global slice counter for debugging
 
 
 def sens_expand(x: torch.Tensor, sens_maps: torch.Tensor) -> torch.Tensor:
@@ -296,8 +302,8 @@ class TGVN_Block(nn.Module):
 
     def forward(
         self,
-        current_image: torch.Tensor,
-        ref_kspace: torch.Tensor,
+        current_image: torch.Tensor,  # 
+        ref_kspace: torch.Tensor,  # shape: (B, C, H, W, 2)
         mask: torch.Tensor,
         second_kspace: torch.Tensor,
         sens_maps: torch.Tensor,
@@ -343,7 +349,7 @@ class TGVN_Block(nn.Module):
             ), sens_maps
         )
         p = r.clone()
-        rs_old = inner(r, r)
+        rs_old = inner(r, r)  # shape: (B, C, 1, 1)
 
         for _ in range(num_iter):
             Ap = sens_reduce(
@@ -359,7 +365,44 @@ class TGVN_Block(nn.Module):
             rs_old = rs_new
 
         soft_asc = torch.abs(self.asc_weight) * x
-        return current_image - soft_dc - soft_asc - model_term
+
+        _out = current_image - soft_dc - soft_asc - model_term
+
+        if False:
+            # create a folder for the current slice count 
+            global slice_counter
+            out_dir = Path(rf"/data/TGVNmemory/debug/TGVN_activations/slice_{slice_counter:03d}/")
+            # prepare output directory
+            out_dir.mkdir(parents=True, exist_ok=True)
+
+            # create a folder for each type of output (asc_map, soft_dc, model_term, current_image)
+            dt = datetime.now().strftime('%H%M%S')
+            (out_dir / "asc_map").mkdir(parents=True, exist_ok=True)
+            (out_dir / "soft_dc").mkdir(parents=True, exist_ok=True)
+            (out_dir / "model_term").mkdir(parents=True, exist_ok=True)
+            (out_dir / "x_curr").mkdir(parents=True, exist_ok=True)
+            (out_dir / "x_next").mkdir(parents=True, exist_ok=True)
+
+            # save asc_map, soft_dc, model_term, and current_image
+            fname = out_dir / "asc_map" / f"{dt}.tiff"
+            imwrite(fname, complex_abs(soft_asc.cpu()).numpy(), photometric='minisblack')
+
+            fname = out_dir / "soft_dc" / f"{dt}.tiff"
+            imwrite(fname, complex_abs(soft_dc.cpu()).numpy(), photometric='minisblack')
+
+            fname = out_dir / "model_term" / f"{dt}.tiff"
+            imwrite(fname, complex_abs(model_term.cpu()).numpy(), photometric='minisblack')
+
+            fname = out_dir / "x_curr" / f"{dt}.tiff"
+            imwrite(fname, complex_abs(current_image.cpu()).numpy(), photometric='minisblack')
+            
+            fname = out_dir / "x_next" / f"{dt}.tiff"
+            imwrite(fname, complex_abs(_out.cpu()).numpy(), photometric='minisblack')
+
+            print(f"✅ Saved intermediate result to {out_dir} at {dt}")
+            time.sleep(1)  # Ensure filename is unique
+
+        return _out
 
 
 class VarNetImage(nn.Module):
@@ -476,7 +519,7 @@ class TGVN_1S(nn.Module):
     ) -> torch.Tensor:
 
         sens_maps = self.sens_net(masked_kspace)
-        image_pred = sens_reduce(masked_kspace, sens_maps)
+        image_pred = sens_reduce(masked_kspace, sens_maps) # same shape (1, 1, 640, 368, 2)
 
         for cascade in self.cascades:
             image_pred = cascade(
@@ -487,6 +530,10 @@ class TGVN_1S(nn.Module):
                 sens_maps,
                 self.delta,
             )
+
+        # increment global slice counter after processing each slice
+        global slice_counter
+        slice_counter += 1
 
         # return magnitude or complex-valued image
         if return_mag:
