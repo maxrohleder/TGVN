@@ -115,7 +115,25 @@ class SliceDatasetJoint(torch.utils.data.Dataset):
 
     def _retrieve_metadata(self, fname):
         with h5py.File(fname, "r") as hf:
-            et_root = etree.fromstring(hf["ismrmrd_header"][()])
+            # Detect HDF5 structure: fastMRI vs scanner data
+            if "ismrmrd_header" in hf:
+                # fastMRI structure
+                hdr = hf["ismrmrd_header"][()]
+                kspace_key = "kspace"
+            elif "dataset" in hf and "xml" in hf["dataset"]:
+                # Scanner data structure
+                hdr = hf["dataset"]["xml"][()]
+                hdr = hdr[0]  # Extract from numpy array
+                if isinstance(hdr, bytes):
+                    hdr = hdr.decode('utf-8')
+                kspace_key = "dataset/data"
+            else:
+                raise KeyError("Unable to find ISMRMRD header in file")
+            
+            # Parse XML (handle bytes if needed)
+            if isinstance(hdr, bytes):
+                hdr = hdr.decode('utf-8')
+            et_root = etree.fromstring(hdr)
 
             enc = ["encoding", "encodedSpace", "matrixSize"]
             enc_size = (
@@ -137,13 +155,14 @@ class SliceDatasetJoint(torch.utils.data.Dataset):
             padding_left = enc_size[1] // 2 - enc_limits_center
             padding_right = padding_left + enc_limits_max
 
-            num_slices = hf["kspace"].shape[0]
+            num_slices = hf[kspace_key].shape[0]
 
             metadata = {
                 "padding_left": padding_left,
                 "padding_right": padding_right,
                 "encoding_size": enc_size,
                 "recon_size": recon_size,
+                "kspace_key": kspace_key,
                 **hf.attrs,
             }
 
@@ -157,7 +176,7 @@ class SliceDatasetJoint(torch.utils.data.Dataset):
         pdfs_fname, pdfs_dataslice, pdfs_metadata = self.pdfs_raw_samples[i]
 
         with h5py.File(pdfs_fname, "r") as hf:
-            pdfs_kspace = hf["kspace"][pdfs_dataslice]
+            pdfs_kspace = hf["kspace"][pdfs_dataslice]  # (15, 640, 368), dtype 'complex64'
             pdfs_mask = np.asarray(hf["mask"]) if "mask" in hf else None
             pdfs_target = hf["reconstruction_rss"][pdfs_dataslice]
 
@@ -165,7 +184,7 @@ class SliceDatasetJoint(torch.utils.data.Dataset):
             pdfs_attrs.update(pdfs_metadata)
 
         with h5py.File(pd_fname, "r") as hf:
-            pd_kspace = hf["kspace"][pd_dataslice]
+            pd_kspace = hf["kspace"][pd_dataslice]  # (15, 640, 368), dtype 'complex64'
             pd_mask = np.asarray(hf["mask"]) if "mask" in hf else None
             pd_target = hf["reconstruction_rss"][pd_dataslice]
 
@@ -246,7 +265,25 @@ class SliceDatasetM4Joint(torch.utils.data.Dataset):
 
     def _retrieve_metadata(self, fname):
         with h5py.File(fname, "r") as hf:
-            et_root = etree.fromstring(hf["ismrmrd_header"][()])
+            # Detect HDF5 structure: fastMRI vs scanner data
+            if "ismrmrd_header" in hf:
+                # fastMRI structure
+                hdr = hf["ismrmrd_header"][()]
+                kspace_key = "kspace"
+            elif "dataset" in hf and "xml" in hf["dataset"]:
+                # Scanner data structure
+                hdr = hf["dataset"]["xml"][()]
+                hdr = hdr[0]  # Extract from numpy array
+                if isinstance(hdr, bytes):
+                    hdr = hdr.decode('utf-8')
+                kspace_key = "dataset/data"
+            else:
+                raise KeyError("Unable to find ISMRMRD header in file")
+            
+            # Parse XML (handle bytes if needed)
+            if isinstance(hdr, bytes):
+                hdr = hdr.decode('utf-8')
+            et_root = etree.fromstring(hdr)
 
             enc = ["encoding", "encodedSpace", "matrixSize"]
             enc_size = (
@@ -268,13 +305,14 @@ class SliceDatasetM4Joint(torch.utils.data.Dataset):
             padding_left = enc_size[1] // 2 - enc_limits_center
             padding_right = padding_left + enc_limits_max
 
-            num_slices = hf["kspace"].shape[0]
+            num_slices = hf[kspace_key].shape[0]
 
             metadata = {
                 "padding_left": padding_left,
                 "padding_right": padding_right,
                 "encoding_size": enc_size,
                 "recon_size": recon_size,
+                "kspace_key": kspace_key,
                 **hf.attrs,
             }
 
