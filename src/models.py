@@ -16,6 +16,8 @@ import torch.nn.functional as F
 from fastmri import complex_abs, complex_conj, ifft2c, fft2c, rss_complex
 from fastmri.models.unet import Unet
 
+
+DEBUG_DUMP_ACTIVATIONS = False  # Set to True to enable dumping intermediate activations for debugging
 slice_counter = 0  # global slice counter for debugging
 
 
@@ -368,7 +370,7 @@ class TGVN_Block(nn.Module):
 
         _out = current_image - soft_dc - soft_asc - model_term
 
-        if False:
+        if DEBUG_DUMP_ACTIVATIONS:
             # create a folder for the current slice count 
             global slice_counter
             out_dir = Path(rf"/data/TGVNmemory/debug/TGVN_activations/slice_{slice_counter:03d}/")
@@ -531,9 +533,10 @@ class TGVN_1S(nn.Module):
                 self.delta,
             )
 
-        # increment global slice counter after processing each slice
-        global slice_counter
-        slice_counter += 1
+        if DEBUG_DUMP_ACTIVATIONS:
+            # increment global slice counter after processing each slice
+            global slice_counter
+            slice_counter += 1
 
         # return magnitude or complex-valued image
         if return_mag:
